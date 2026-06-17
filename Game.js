@@ -1109,40 +1109,39 @@ class Game {
 
     /** 主菜单渲染：街机格斗风格（menu_bg.png 背景 + 全UI绘制） */
     renderMenu(ctx, W, H) {
-        // 优先使用新版 menuBgImage，fallback 到旧版 menuCoverImage，最后用纯色背景
+        // 优先使用新版 menuBgImage，fallback 到旧版 menuCoverImage。
+        // 两张图都未完成加载时，不再绘制简版 fallback 菜单，避免开局闪现旧/简版首页。
+        // 此时由 #gameCanvas 的 CSS background-image 先承接首屏背景，下面仍绘制完整菜单 UI。
         const useBgImage = this.menuBgImage && this.menuBgImage.complete && this.menuBgImage.naturalWidth > 0;
         const useCoverImage = !useBgImage && this.menuCoverImage && this.menuCoverImage.complete && this.menuCoverImage.naturalWidth > 0;
 
-        if (!useBgImage && !useCoverImage) {
-            this._renderFallbackMenu(ctx, W, H);
-            return;
-        }
-
-        const img = useBgImage ? this.menuBgImage : this.menuCoverImage;
+        const img = useBgImage ? this.menuBgImage : (useCoverImage ? this.menuCoverImage : null);
         const t = this.frameCount * 0.016; // 时间（秒）
 
         // === 阶段1：背景层 ===
-        // cover 模式铺满
-        const imgW = img.naturalWidth;
-        const imgH = img.naturalHeight;
-        const coverScale = Math.max(W / imgW, H / imgH);
-        let drawW = imgW * coverScale;
-        let drawH = imgH * coverScale;
-        let drawX = (W - drawW) / 2;
-        let drawY = (H - drawH) / 2;
+        if (img) {
+            // cover 模式铺满
+            const imgW = img.naturalWidth;
+            const imgH = img.naturalHeight;
+            const coverScale = Math.max(W / imgW, H / imgH);
+            let drawW = imgW * coverScale;
+            let drawH = imgH * coverScale;
+            let drawX = (W - drawW) / 2;
+            let drawY = (H - drawH) / 2;
 
-        // 浮动动画
-        const floatX = Math.sin(t * 0.25) * 3;
-        const floatY = Math.sin(t * 0.35) * 2;
-        // 呼吸缩放 ±0.3%
-        const breathe = 1 + Math.sin(t * 0.5) * 0.003;
+            // 浮动动画
+            const floatX = Math.sin(t * 0.25) * 3;
+            const floatY = Math.sin(t * 0.35) * 2;
+            // 呼吸缩放 ±0.3%
+            const breathe = 1 + Math.sin(t * 0.5) * 0.003;
 
-        const finalX = drawX + floatX;
-        const finalY = drawY + floatY;
-        const finalW = drawW * breathe;
-        const finalH = drawH * breathe;
+            const finalX = drawX + floatX;
+            const finalY = drawY + floatY;
+            const finalW = drawW * breathe;
+            const finalH = drawH * breathe;
 
-        ctx.drawImage(img, finalX, finalY, finalW, finalH);
+            ctx.drawImage(img, finalX, finalY, finalW, finalH);
+        }
 
         // 暗色遮罩 rgba(0,0,0,0.35)
         ctx.fillStyle = 'rgba(0,0,0,0.35)';

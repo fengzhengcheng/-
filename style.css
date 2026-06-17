@@ -8,7 +8,7 @@
 html, body {
     width: 100%;
     height: 100%;
-    background: #000;
+    background: #000 url("assets/ui/menu_bg.png") center center / cover no-repeat;
     overflow: hidden;
     font-family: "Microsoft YaHei", sans-serif;
 }
@@ -21,6 +21,7 @@ body {
 
 #gameCanvas {
     display: block;
+    background: #000 url("assets/ui/menu_bg.png") center center / cover no-repeat;
     image-rendering: auto;
     cursor: default;
 }
