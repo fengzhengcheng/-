@@ -34,6 +34,12 @@ class Player {
         this.comboCount = 0;
         this.comboTimer = 0;
         this.comboTimeout = 25;
+        this.maxHeavyStamina = 5;
+        this.heavyStamina = this.maxHeavyStamina;
+        this.heavyStaminaRegenDelay = 3000;
+        this.heavyStaminaRegenDuration = 3000;
+        this.heavyStaminaRegenTimer = 0;
+        this.heavyWarningTimer = 0;
         // 技能
         this.skillActive = false;
         this.skillTimer = 0;
@@ -93,6 +99,8 @@ class Player {
         this.yMin = yMin; this.yMax = yMax;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
         if (this.epWarningTimer > 0) this.epWarningTimer--;
+        if (this.heavyWarningTimer > 0) this.heavyWarningTimer--;
+        this.updateHeavyStamina();
         if (this.laserCooldownRemaining > 0) {
             this.laserCooldownRemaining = Math.max(0, this.laserCooldownRemaining - 16.67);
         }
@@ -195,7 +203,8 @@ class Player {
 
         // EP 自然恢复
         if (!this.isLaserCasting) {
-            this.energy = Math.min(this.maxEnergy, this.energy + 0.05);
+            const regenPerFrame = this.isLaserCharacter ? this.maxEnergy / (5 * 60) : 0.05;
+            this.energy = Math.min(this.maxEnergy, this.energy + regenPerFrame);
         }
 
         // 输入（playerControlEnabled 由 Game 控制）
@@ -220,8 +229,7 @@ class Player {
             }
             // 重击
             if (input.isJustPressed('KeyK')) {
-                this.startAttack('heavy');
-                return;
+                if (this.startAttack('heavy')) return;
             }
             // 技能
             if (this.isLaserCharacter) {
@@ -263,14 +271,41 @@ class Player {
             this.attackDuration = Math.floor(22 * this.config.attackSpeed * weaponSpeedMul);
             this.attackTimer = this.attackDuration;
             this.attackHit = false;
+            return true;
         } else {
+            if (!this.consumeHeavyStamina()) return false;
             this.state = 'heavy';
             this.attackType = 'heavy';
             this.attackDuration = Math.floor(30 * this.config.attackSpeed * weaponSpeedMul);
             this.attackTimer = this.attackDuration;
             this.attackHit = false;
             this.comboCount = 0;
+            return true;
         }
+    }
+
+    consumeHeavyStamina() {
+        if (this.heavyStamina < 1) {
+            this.heavyWarningTimer = 40;
+            return false;
+        }
+        this.heavyStamina = Math.max(0, this.heavyStamina - 1);
+        this.heavyStaminaRegenTimer = 0;
+        return true;
+    }
+
+    updateHeavyStamina() {
+        if (this.heavyStamina >= this.maxHeavyStamina) {
+            this.heavyStamina = this.maxHeavyStamina;
+            this.heavyStaminaRegenTimer = 0;
+            return;
+        }
+
+        this.heavyStaminaRegenTimer += 16.67;
+        if (this.heavyStaminaRegenTimer < this.heavyStaminaRegenDelay) return;
+
+        const regenPerFrame = this.maxHeavyStamina / (this.heavyStaminaRegenDuration / 16.67);
+        this.heavyStamina = Math.min(this.maxHeavyStamina, this.heavyStamina + regenPerFrame);
     }
 
     startSkill() {

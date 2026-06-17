@@ -404,7 +404,7 @@ class Game {
             if (drain > 0) {
                 p.energy = Math.max(0, p.energy - drain);
                 if (p.energy <= 0) {
-                    p.endLaserCast(false);
+                    p.endLaserCast(true);
                     return;
                 }
             }
@@ -457,8 +457,6 @@ class Game {
             const dx = enemy.x - p.x;
             const absY = Math.abs(enemy.y - p.y);
             const distance = Math.hypot(dx, absY);
-            if (p.facing === 1 && dx < 0) return;
-            if (p.facing === -1 && dx > 0) return;
             if (distance > (p.config.laserRange || 520)) return;
             candidates.push({
                 entity: enemy,
@@ -466,6 +464,7 @@ class Game {
                 dx: Math.abs(dx),
                 dy: absY,
                 distance,
+                knockbackDir: dx >= 0 ? 1 : -1,
                 isBoss: false
             });
         });
@@ -475,17 +474,16 @@ class Game {
             const dx = boss.x - p.x;
             const absY = Math.abs(boss.y - p.y);
             const distance = Math.hypot(dx, absY);
-            if (!((p.facing === 1 && dx < 0) || (p.facing === -1 && dx > 0))) {
-                if (distance <= (p.config.laserRange || 520)) {
-                    candidates.push({
-                        entity: boss,
-                        id: `boss-${boss.name}`,
-                        dx: Math.abs(dx),
-                        dy: absY,
-                        distance,
-                        isBoss: true
-                    });
-                }
+            if (distance <= (p.config.laserRange || 520)) {
+                candidates.push({
+                    entity: boss,
+                    id: `boss-${boss.name}`,
+                    dx: Math.abs(dx),
+                    dy: absY,
+                    distance,
+                    knockbackDir: dx >= 0 ? 1 : -1,
+                    isBoss: true
+                });
             }
         }
 
@@ -529,10 +527,10 @@ class Game {
             if (target.state !== 'dead') {
                 target.state = 'hurt';
                 target.hurtTimer = Math.max(target.hurtTimer || 0, 4);
-                target.knockbackX = p.facing * bossKnockback;
+                target.knockbackX = (targetData.knockbackDir || p.facing) * bossKnockback;
                 target.knockbackY = 0;
             }
-            target.x += p.facing * bossKnockback;
+            target.x += (targetData.knockbackDir || p.facing) * bossKnockback;
             if (typeof target.clampPosition === 'function') target.clampPosition();
             else if (typeof target.clampY === 'function') target.clampY();
             if (target.hp <= 0) {
@@ -543,9 +541,9 @@ class Game {
                 this.score += 500;
             }
         } else {
-            target.takeDamage(damage, p.facing, enemyKnockback);
+            target.takeDamage(damage, targetData.knockbackDir || p.facing, enemyKnockback);
             if (target.state !== 'dead') {
-                target.knockbackX = p.facing * enemyKnockback;
+                target.knockbackX = (targetData.knockbackDir || p.facing) * enemyKnockback;
                 target.knockbackY = 0;
             }
             if (target.hp <= 0) {
@@ -658,14 +656,27 @@ class Game {
             ? ('skill' + this.player.config.charType.charAt(0).toUpperCase() + this.player.config.charType.slice(1))
             : this.player.attackType;
 
+        const hitCandidates = [];
         this.enemies.forEach(enemy => {
             if (enemy.state === 'dead' || !enemy.alive) return;
             if (isMultiHit && this.player.skillHitEnemies.has(enemy)) return;
             
             // 使用统一的 canHit 判定
             const hit = GameUtils.canHit(this.player, enemy, attackBox, attackBox.yRange, true);
-            
             if (hit) {
+                hitCandidates.push({
+                    enemy,
+                    distance: Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y)
+                });
+            }
+        });
+
+        hitCandidates.sort((a, b) => a.distance - b.distance);
+        const targets = this.player.attackType === 'normal'
+            ? hitCandidates.slice(0, 1)
+            : hitCandidates;
+
+        targets.forEach(({ enemy }) => {
                 const damage = this.player.getCurrentDamage(), knockbackForce = this.player.getCurrentKnockback();
                 enemy.takeDamage(damage, this.player.facing, knockbackForce);
                 if (isMultiHit) { this.player.skillHitEnemies.add(enemy); } else { this.player.attackHit = true; }
@@ -683,7 +694,6 @@ class Game {
                 if (this.player.weapon && (this.player.attackType === 'normal' || this.player.attackType === 'heavy')) {
                     this.useWeaponDurability();
                 }
-            }
         });
     }
 
@@ -1543,6 +1553,12 @@ class Game {
         // EP 条
         const epR = this.player.energy / this.player.maxEnergy;
         UITheme.drawBar(ctx, 18, 36, 200, 12, epR, UITheme.getEPColors(), 'EP', `${Math.floor(this.player.energy)}/${this.player.maxEnergy}`);
+
+        // 重击体力条：只限制 K 重击，不影响 J 轻击和 L 技能
+        const heavyR = this.player.heavyStamina / this.player.maxHeavyStamina;
+        UITheme.drawBar(ctx, 370, 36, 118, 12, heavyR,
+            { top: '#ffcc55', bottom: '#cc7a1a', border: '#ffe08a' },
+            '重击', `${Math.floor(this.player.heavyStamina)}/${this.player.maxHeavyStamina}`);
 
         // 武器信息
         const wpnX = 230, wpnY = 10;
