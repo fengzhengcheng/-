@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>素材预览工具 - Street Fighter Beat'em Up</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+            background: #12121a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        /* 顶部工具栏 */
+        .toolbar {
+            background: #1a1a2e;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #2d2d44;
+            min-height: 56px;
+        }
+
+        .toolbar h1 {
+            font-size: 16px;
+            color: #ffd700;
+            white-space: nowrap;
+            margin-right: 15px;
+        }
+
+        .toolbar-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-section label {
+            font-size: 12px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+
+        /* 分类标签 */
+        .category-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag-btn {
+            padding: 5px 12px;
+            border: 1px solid #3d3d5c;
+            background: #222236;
+            color: #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .tag-btn:hover {
+            background: #333355;
+            border-color: #5555aa;
+        }
+
+        .tag-btn.active {
+            background: #4444aa;
+            border-color: #6666cc;
+            color: #fff;
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tool-btn {
+            padding: 6px 14px;
+            border: 1px solid #3d3d5c;
+            background: #252540;
+            color: #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #333366;
+            border-color: #5555aa;
+        }
+
+        .tool-btn.active {
+            background: #444488;
+            border-color: #7777bb;
+            color: #fff;
+        }
+
+        /* 文件选择按钮 */
+        .file-input-wrapper {
+            position: relative;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-btn {
+            padding: 6px 18px;
+            background: #336633;
+            color: #fff;
+            border: 1px solid #448844;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: #448844;
+        }
+
+        /* 缩放控制 */
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .zoom-slider {
+            width: 120px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #6688ff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .zoom-value {
+            font-size: 12px;
+            color: #88aaff;
+            min-width: 42px;
+            text-align: center;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: calc(100vh - 56px - 120px);
+        }
+
+        /* 预览区域 */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: auto;
+            transition: background 0.3s;
+        }
+
+        .preview-area.bg-dark { background: #1a1a2e; }
+        .preview-area.bg-light { background: #f0f0f0; }
+        .preview-area.bg-transparent { background: transparent; }
+        .preview-area.bg-checkerboard {
+            background-image:
+                linear-gradient(45deg, #ddd 25%, transparent 25%),
+                linear-gradient(-45deg, #ddd 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ddd 75%),
+                linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-size: 32px 32px;
+            background-position: 0 0, 0 16px, 16px -16px, -16px 0px;
+        }
+
+        /* Canvas 棋盘格覆盖层 */
+        .checker-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 预览图片容器 */
+        .image-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 200px;
+            min-height: 200px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* 拖拽提示 */
+        .drop-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .drop-hint .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .drop-hint p {
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .drop-hint.drag-over {
+            color: #ffd700;
+        }
+        .drop-hint.drag-over .icon {
+            opacity: 0.7;
+        }
+
+        /* 导航箭头 */
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 60px;
+            background: rgba(30, 30, 50, 0.85);
+            border: 1px solid #444466;
+            color: #ccc;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .nav-arrow:hover {
+            background: rgba(60, 60, 100, 0.9);
+            color: #fff;
+        }
+
+        .nav-arrow.disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .nav-prev { left: 10px; border-radius: 0 8px 8px 0; }
+        .nav-next { right: 10px; border-radius: 8px 0 0 8px; }
+
+        /* 底部信息栏 + 缩略图 */
+        .bottom-panel {
+            background: #16162a;
+            border-top: 2px solid #2d2d44;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 信息面板 */
+        .info-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 8px 20px;
+            border-bottom: 1px solid #252540;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .info-label {
+            color: #888;
+        }
+
+        .info-value {
+            color: #aaccee;
+            font-weight: bold;
+        }
+
+        .info-value.highlight {
+            color: #ffd700;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .badge-alpha {
+            background: #224422;
+            color: #66dd66;
+            border: 1px solid #336633;
+        }
+
+        .badge-no-alpha {
+            background: #333;
+            color: #999;
+            border: 1px solid #444;
+        }
+
+        /* 缩略图栏 */
+        .thumbnail-bar {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .thumbnail-bar::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .thumbnail-bar::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        .thumbnail-bar::-webkit-scrollbar-thumb {
+            background: #444466;
+            border-radius: 3px;
+        }
+
+        .thumb-item {
+            flex-shrink: 0;
+            width: 72px;
+            height: 54px;
+            border: 2px solid #333355;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            opacity: 0.65;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .thumb-item:hover {
+            opacity: 0.9;
+            border-color: #5555aa;
+        }
+
+        .thumb-item.active {
+            opacity: 1;
+            border-color: #ffd700;
+            box-shadow: 0 0 8px rgba(255,215,0,0.3);
+        }
+
+        .thumb-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #222;
+        }
+
+        .thumb-index {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: #aaa;
+            font-size: 9px;
+            text-align: center;
+            padding: 1px 0;
+        }
+
+        /* 图片计数 */
+        .image-counter {
+            font-size: 11px;
+            color: #888;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部工具栏 -->
+<div class="toolbar">
+    <h1>🎮 素材预览工具 - Street Fighter Beat'em Up</h1>
+
+    <!-- 上传 -->
+    <div class="file-input-wrapper">
+        <input type="file" id="fileInput" multiple accept=".png,.jpg,.jpeg,.gif,.webp">
+        <span class="upload-btn">📁 选择文件</span>
+    </div>
+
+    <!-- 分类标签 -->
+    <div class="category-tags">
+        <button class="tag-btn active" data-category="all">全部</button>
+        <button class="tag-btn" data-category="player">玩家角色</button>
+        <button class="tag-btn" data-category="enemy">敌人</button>
+        <button class="tag-btn" data-category="boss">Boss</button>
+        <button class="tag-btn" data-category="weapon">武器</button>
+        <button class="tag-btn" data-category="item">道具</button>
+        <button class="tag-btn" data-category="effect">特效</button>
+        <button class="tag-btn" data-category="bg">背景</button>
+        <button class="tag-btn" data-category="other">其他</button>
+    </div>
+
+    <!-- 背景切换 -->
+    <div class="toolbar-section">
+        <label>背景：</label>
+        <div class="btn-group">
+            <button class="tool-btn active" data-bg="dark">深色</button>
+            <button class="tool-btn" data-bg="light">浅色</button>
+            <button class="tool-btn" data-bg="checkerboard">棋盘格</button>
+            <button class="tool-btn" data-bg="transparent">透明</button>
+        </div>
+    </div>
+
+    <!-- 缩放 -->
+    <div class="toolbar-section zoom-control">
+        <label>缩放：</label>
+        <input type="range" class="zoom-slider" id="zoomSlider" min="25" max="400" value="100" step="25">
+        <span class="zoom-value" id="zoomValue">100%</span>
+    </div>
+
+    <!-- 计数 -->
+    <span class="image-counter" id="imageCounter">共 0 张图片</span>
+</div>
+
+<!-- 主预览区 -->
+<div class="main-content">
+    <div class="preview-area bg-dark" id="previewArea">
+        <canvas class="checker-canvas" id="checkerCanvas"></canvas>
+
+        <div class="drop-hint" id="dropHint">
+            <div class="icon">🖼️</div>
+            <p>拖拽图片到此处<br>或点击「选择文件」上传<br>支持 PNG / JPG / GIF / WebP</p>
+        </div>
+
+        <div class="image-container" id="imageContainer" style="display:none;">
+            <img class="preview-image" id="previewImage" alt="预览图">
+        </div>
+
+        <button class="nav-arrow nav-prev disabled" id="navPrev" title="上一张">&#9664;</button>
+        <button class="nav-arrow nav-next disabled" id="navNext" title="下一张">&#9654;</button>
+    </div>
+</div>
+
+<!-- 底部信息栏 + 缩略图 -->
+<div class="bottom-panel">
+    <div class="info-bar" id="infoBar">
+        <div class="info-item"><span class="info-label">文件名：</span><span class="info-value" id="infoName">-</span></div>
+        <div class="info-item"><span class="info-label">尺寸：</span><span class="info-value highlight" id="infoSize">-</span></div>
+        <div class="info-item"><span class="info-label">大小：</span><span class="info-value" id="infoFileSize">-</span></div>
+        <div class="info-item"><span class="info-label">类型：</span><span class="info-value" id="infoType">-</span></div>
+        <div class="info-item"><span class="info-label">透明通道：</span><span id="infoAlpha"><span class="badge badge-no-alpha">未检测</span></span></div>
+    </div>
+    <div class="thumbnail-bar" id="thumbnailBar"></div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ========== 状态 ==========
+    const state = {
+        images: [],          // { file, name, url, size, type, width, height, hasAlpha, category }
+        currentIndex: -1,
+        zoom: 100,
+        bgMode: 'dark',      // dark | light | checkerboard | transparent
+        checkerVisible: false
+    };
+
+    // ========== DOM 引用 ==========
+    const dom = {
+        fileInput: document.getElementById('fileInput'),
+        previewArea: document.getElementById('previewArea'),
+        dropHint: document.getElementById('dropHint'),
+        imageContainer: document.getElementById('imageContainer'),
+        previewImage: document.getElementById('previewImage'),
+        navPrev: document.getElementById('navPrev'),
+        navNext: document.getElementById('navNext'),
+        thumbnailBar: document.getElementById('thumbnailBar'),
+        infoName: document.getElementById('infoName'),
+        infoSize: document.getElementById('infoSize'),
+        infoFileSize: document.getElementById('infoFileSize'),
+        infoType: document.getElementById('infoType'),
+        infoAlpha: document.getElementById('infoAlpha'),
+        imageCounter: document.getElementById('imageCounter'),
+        zoomSlider: document.getElementById('zoomSlider'),
+        zoomValue: document.getElementById('zoomValue'),
+        checkerCanvas: document.getElementById('checkerCanvas')
+    };
+
+    // ========== 工具函数 ==========
+
+    function getFileExtension(name) {
+        const dot = name.lastIndexOf('.');
+        return dot >= 0 ? name.substring(dot + 1).toLowerCase() : '';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    function getTypeLabel(ext) {
+        const map = { png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', webp: 'WebP' };
+        return map[ext] || ext.toUpperCase();
+    }
+
+    // 通过 Canvas 检测透明通道
+    function detectAlpha(img) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // 只采样部分像素以提高性能（最多采样 200x200）
+            const w = canvas.width;
+            const h = canvas.height;
+            const stepX = Math.max(1, Math.floor(w / 200));
+            const stepY = Math.max(1, Math.floor(h / 200));
+            const data = ctx.getImageData(0, 0, w, h).data;
+
+            for (let y = 0; y < h; y += stepY) {
+                for (let x = 0; x < w; x += stepX) {
+                    const idx = (y * w + x) * 4 + 3;
+                    if (data[idx] < 255) return true;
+                }
+            }
+            return false;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    // 绘制棋盘格到 canvas 覆盖层
+    function drawCheckerCanvas() {
+        const canvas = dom.checkerCanvas;
+        const area = dom.previewArea;
+        canvas.width = area.scrollWidth;
+        canvas.height = area.scrollHeight;
+
+        if (!state.checkerVisible) {
+            canvas.style.display = 'none';
+            return;
+        }
+
+        canvas.style.display = 'block';
+        const ctx = canvas.getContext('2d');
+        const size = 32;
+        const cols = Math.ceil(canvas.width / size);
+        const rows = Math.ceil(canvas.height / size);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                ctx.fillStyle = (r + c) % 2 === 0 ? '#ffffff' : '#dddddd';
+                ctx.fillRect(c * size, r * size, size, size);
+            }
+        }
+    }
+
+    // ========== 文件处理 ==========
+
+    function handleFiles(fileList) {
+        const validExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        let addedCount = 0;
+
+        Array.from(fileList).forEach(file => {
+            const ext = getFileExtension(file.name);
+            if (!validExts.includes(ext)) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const alpha = detectAlpha(img);
+                    state.images.push({
+                        file: file,
+                        name: file.name,
+                        url: e.target.result,
+                        size: file.size,
+                        type: ext,
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        hasAlpha: alpha,
+                        category: 'all'
+                    });
+                    addedCount++;
+
+                    renderThumbnails();
+
+                    if (state.currentIndex === -1) {
+                        showImage(0);
+                    }
+
+                    updateCounter();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // ========== 渲染 ==========
+
+    function showImage(index) {
+        if (index < 0 || index >= state.images.length) return;
+        state.currentIndex = index;
+        const imgData = state.images[index];
+
+        dom.dropHint.style.display = 'none';
+        dom.imageContainer.style.display = 'flex';
+        dom.previewImage.src = imgData.url;
+        applyZoom();
+
+        // 更新信息面板
+        dom.infoName.textContent = imgData.name;
+        dom.infoSize.textContent = imgData.width + ' × ' + imgData.height;
+        dom.infoFileSize.textContent = formatFileSize(imgData.size);
+        dom.infoType.textContent = getTypeLabel(imgData.type);
+
+        if (imgData.hasAlpha === true) {
+            dom.infoAlpha.innerHTML = '<span class="badge badge-alpha">✓ 有透明通道</span>';
+        } else if (imgData.hasAlpha === false) {
+            dom.infoAlpha.innerHTML = '<span class="badge badge-no-alpha">✗ 无透明通道</span>';
+        } else {
+            dom.infoAlpha.innerHTML = '<span class="badge badge-no-alpha">未检测</span>';
+        }
+
+        updateNavButtons();
+        updateThumbnailActive();
+    }
+
+    function applyZoom() {
+        dom.previewImage.style.transform = `scale(${state.zoom / 100})`;
+        dom.previewImage.style.transformOrigin = 'center center';
+    }
+
+    function renderThumbnails() {
+        dom.thumbnailBar.innerHTML = '';
+        state.images.forEach((imgData, i) => {
+            const item = document.createElement('div');
+            item.className = 'thumb-item' + (i === state.currentIndex ? ' active' : '');
+            item.innerHTML =
+                `<img src="${imgData.url}" alt="${imgData.name}">` +
+                `<span class="thumb-index">${i + 1}</span>`;
+            item.addEventListener('click', () => showImage(i));
+            dom.thumbnailBar.appendChild(item);
+        });
+    }
+
+    function updateThumbnailActive() {
+        const thumbs = dom.thumbnailBar.querySelectorAll('.thumb-item');
+        thumbs.forEach((t, i) => {
+            t.classList.toggle('active', i === state.currentIndex);
+        });
+    }
+
+    function updateNavButtons() {
+        dom.navPrev.classList.toggle('disabled', state.currentIndex <= 0);
+        dom.navNext.classList.toggle('disabled', state.currentIndex >= state.images.length - 1);
+    }
+
+    function updateCounter() {
+        dom.imageCounter.textContent = `共 ${state.images.length} 张图片 · 第 ${state.currentIndex + 1}/${state.images.length}`;
+    }
+
+    // ========== 事件绑定 ==========
+
+    // 文件选择
+    dom.fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+        this.value = ''; // 允许重复选择同一文件
+    });
+
+    // 拖拽
+    const area = dom.previewArea;
+    area.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.dropHint.classList.add('drag-over');
+        this.style.borderColor = '#ffd700';
+    });
+
+    area.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.dropHint.classList.remove('drag-over');
+        this.style.borderColor = '';
+    });
+
+    area.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.dropHint.classList.remove('drag-over');
+        this.style.borderColor = '';
+        if (e.dataTransfer.files.length > 0) {
+            handleFiles(e.dataTransfer.files);
+        }
+    });
+
+    // 导航箭头
+    dom.navPrev.addEventListener('click', function() {
+        if (state.currentIndex > 0) showImage(state.currentIndex - 1);
+    });
+    dom.navNext.addEventListener('click', function() {
+        if (state.currentIndex < state.images.length - 1) showImage(state.currentIndex + 1);
+    });
+
+    // 键盘导航
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowLeft' && state.currentIndex > 0) {
+            showImage(state.currentIndex - 1);
+        } else if (e.key === 'ArrowRight' && state.currentIndex < state.images.length - 1) {
+            showImage(state.currentIndex + 1);
+        }
+    });
+
+    // 背景切换
+    document.querySelectorAll('[data-bg]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const mode = this.dataset.bg;
+            state.bgMode = mode;
+            dom.previewArea.className = 'preview-area bg-' + mode;
+
+            if (mode === 'checkerboard') {
+                state.checkerVisible = false;
+            } else if (mode === 'transparent') {
+                state.checkerVisible = true;
+            } else {
+                state.checkerVisible = false;
+            }
+            drawCheckerCanvas();
+        });
+    });
+
+    // 分类标签（仅 UI 切换，不影响实际功能）
+    document.querySelectorAll('.tag-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // 缩放滑块
+    dom.zoomSlider.addEventListener('input', function() {
+        state.zoom = parseInt(this.value, 10);
+        dom.zoomValue.textContent = state.zoom + '%';
+        applyZoom();
+    });
+
+    // 鼠标滚轮缩放
+    dom.previewArea.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -25 : 25;
+            let newZoom = state.zoom + delta;
+            newZoom = Math.max(25, Math.min(400, newZoom));
+            // 对齐到 25 的倍数
+            newZoom = Math.round(newZoom / 25) * 25;
+            if (newZoom !== state.zoom) {
+                state.zoom = newZoom;
+                dom.zoomSlider.value = state.zoom;
+                dom.zoomValue.textContent = state.zoom + '%';
+                applyZoom();
+            }
+        }
+    }, { passive: false });
+
+    // 窗口 resize 时重绘棋盘格
+    window.addEventListener('resize', function() {
+        drawCheckerCanvas();
+    });
+
+    // 初始化
+    drawCheckerCanvas();
+
+})();
+</script>
+
+</body>
+</html>

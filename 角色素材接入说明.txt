@@ -1,0 +1,229 @@
+# 角色素材接入说明
+
+本文档说明如何将美术素材（角色三视图、动作帧图）接入到游戏中。
+
+---
+
+## 一、用户发来素材后的保存步骤
+
+### Step 1：确认素材类型
+根据聊天中的图片描述或文件名，判断素材属于哪个类别：
+
+| 类别 | 存放目录 | 示例文件 |
+|------|----------|----------|
+| 阿龙动作帧 | `assets/sprites/players/along/` | along_idle_01.png |
+| 小影动作帧 | `assets/sprites/players/xiaoying/` | xiaoying_walk_01.png |
+| 铁山动作帧 | `assets/sprites/players/tieshan/` | tieshan_attack1_01.png |
+| 普通敌人 | `assets/sprites/enemies/normal/` | enemy_thug_idle_01.png |
+| Boss | `assets/sprites/enemies/bosses/boss1/` | boss1_idle_01.png |
+| 武器 | `assets/weapons/` | weapon_stick.png |
+| 道具 | `assets/items/` | item_hp.png |
+| 特效 | `assets/effects/` | effect_along_slash_01.png |
+
+### Step 2：重命名（如果需要）
+如果素材名称不符合规范，按以下规则重命名：
+- `{角色名}_{动作名}_{序号}.png`
+- 角色名：along / xiaoying / tieshan
+- 动作名：idle / walk / jump / attack1 / attack2 / attack3 / heavy / skill / hurt / death
+- 序号：01, 02, 03...（两位数，前面补零）
+
+### Step 3：放入对应目录
+将文件复制/移动到上述对应目录中。
+
+### Step 4：通知开发者更新代码
+告诉开发者"XX角色的XX动作帧已放到目录"，开发者会更新 SpriteLoader 配置。
+
+---
+
+## 二、如何把动作帧接入游戏
+
+### 接入流程概览
+
+```
+素材文件 → 目录 → SpriteLoader 注册 → Player/Enemy 引用 → render() 中绘制
+```
+
+### 详细步骤
+
+#### 2.1 在 SpriteLoader 中注册角色素材
+在 `SpriteLoader.js`（或 Game.js 的初始化部分）添加：
+
+```javascript
+// 注册阿龙的素材
+this.spriteSheets = {
+    along: {
+        idle: this.loadSpritesheet('assets/sprites/players/along/', 'along_idle', 4),
+        walk: this.loadSpritesheet('assets/sprites/players/along/', 'along_walk', 6),
+        jump: this.loadSpritesheet('assets/sprites/players/along/', 'along_jump', 3),
+        attack1: this.loadSpritesheet('assets/sprites/players/along/', 'along_attack1', 4),
+        attack2: this.loadSpritesheet('assets/sprites/players/along/', 'along_attack2', 4),
+        attack3: this.loadSpritesheet('assets/sprites/players/along/', 'along_attack3', 4),
+        heavy: this.loadSpritesheet('assets/sprites/players/along/', 'along_heavy', 5),
+        skill: this.loadSpritesheet('assets/sprites/players/along/', 'along_skill', 6),
+        hurt: this.loadSpritesheet('assets/sprites/players/along/', 'along_hurt', 3),
+        death: this.loadSpritesheet('assets/sprites/players/along/', 'along_death', 6),
+    }
+};
+```
+
+#### 2.2 loadSpritesheet 方法
+```javascript
+loadSpritesheet(prefix, baseName, frameCount) {
+    const frames = [];
+    for (let i = 1; i <= frameCount; i++) {
+        const num = String(i).padStart(2, '0');
+        const img = new Image();
+        img.src = `${prefix}${baseName}_${num}.png`;
+        frames.push(img);
+    }
+    return { frames, currentIndex: 0, frameCount };
+}
+```
+
+#### 2.3 在 Player.render() 中使用素材
+```javascript
+render(ctx) {
+    // 如果有素材且加载完成，绘制素材帧
+    if (this.sprites && this.sprites[this.state]) {
+        const sheet = this.sprites[this.state];
+        const img = sheet.frames[sheet.currentIndex];
+        if (img && img.complete && img.naturalWidth > 0) {
+            ctx.save();
+            if (this.facing === 'left') {
+                ctx.translate(this.x, this.y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight);
+            } else {
+                ctx.drawImage(img, this.x - img.naturalWidth / 2, this.y - img.naturalHeight);
+            }
+            ctx.restore();
+            return; // 用了素材就不走下面的程序绘制
+        }
+    }
+
+    // Fallback：程序绘制角色（现有逻辑不变）
+    this.drawCharacter(ctx); // 保留原有绘制方法
+}
+```
+
+---
+
+## 三、如何替换当前程序绘制角色
+
+### 安全替换原则
+
+1. **渐进式替换**：先替换一个角色的一个动作，测试无误后再扩展
+2. **保留 Fallback**：素材缺失时自动回退到程序绘制
+3. **不破坏现有逻辑**：新代码是"增强"而非"覆盖"
+
+### 替换顺序建议
+
+```
+第 1 批：阿龙 idle（最简单，4帧，循环播放）
+  ↓ 测试通过
+第 2 批：阿龙 walk（6帧，需要结合移动速度）
+  ↓ 测试通过
+第 3 批：阿龙 attack1（4帧，需要配合攻击判定）
+  ↓ 测试通过
+第 4 批：阿龙全套动作
+  ↓ 测试通过
+第 5 批：小影全套动作
+  ↓ 测试通过
+第 6 批：铁山全套动作
+  ↓ 测试通过
+第 7 批：敌人 + Boss
+```
+
+---
+
+## 四、如何只替换阿龙，不影响小影和铁山
+
+### 方案：按角色 ID 分别配置
+
+```javascript
+// Player 构造函数中
+constructor(x, y, charConfig) {
+    this.charId = charConfig.id; // 'along' | 'xiaoying' | 'tieshan'
+    
+    // 只为有素材的角色加载素材
+    if (charConfig.id === 'along') {
+        this.sprites = spriteLoader.get(charConfig.id);
+    } else {
+        this.sprites = null; // 无素材，使用程序绘制
+    }
+}
+```
+
+这样：
+- 阿龙 → 有素材就用素材，没有就 fallback
+- 小影 → sprites=null → 始终使用程序绘制
+- 铁山 → 同上
+
+每个角色独立配置，互不影响。
+
+---
+
+## 五、Fallback 机制（素材缺失时不报错）
+
+```javascript
+// 安全的素材绘制方法
+tryDrawSprite(ctx, state) {
+    try {
+        if (!this.sprites || !this.sprites[state]) return false;
+        const sheet = this.sprites[state];
+        const img = sheet.frames[sheet.currentIndex];
+        if (!img || !img.complete || img.naturalWidth === 0) return false;
+        
+        // 正常绘制...
+        ctx.drawImage(img, ...);
+        return true;
+    } catch (e) {
+        console.warn(`[Sprite] ${state} 绘制失败:`, e.message);
+        return false; // 返回 false 让调用方 fallback 到程序绘制
+    }
+}
+```
+
+**关键点**：
+- 图片未加载完 → 返回 false → 用程序绘制
+- 图片路径错误 → catch 异常 → 用程序绘制
+- sprites 为 null → 直接返回 false
+- 任何异常都不会导致游戏崩溃
+
+---
+
+## 六、常见问题 FAQ
+
+**Q: 素材尺寸不对怎么办？**
+A: 在 loadSpritesheet 时可以指定 scale 参数进行缩放。也可以在 drawImage 时传入目标尺寸。
+
+**Q: 帧率太快或太慢怎么办？**
+A: 每个 spritesheet 可以配置 fps 字段。渲染时根据 deltaTime 累加时间，达到 1/fms 切换下一帧。
+
+**Q: 动作之间切换有闪烁怎么办？**
+A: 切换动作时将 currentIndex 重置为 0。如果需要平滑过渡，可以做交叉淡出（两帧同时半透明绘制）。
+
+**Q: 如何让攻击动作只播放一次？**
+A: attack/heavy/skill 这类动作设置 loop=false。播放到最后帧后停在最后一帧，直到状态切换回 idle/walk。
+
+**Q: 敌人素材怎么接入？**
+A: 与玩家类似，在 Enemy 类中也加入 sprites 属性和 tryDrawSprite() 方法。Enemy 的构造函数中根据 enemyType 加载对应素材。
+
+---
+
+## 七、检查清单
+
+接入一套新的角色素材后，请逐项检查：
+
+- [ ] idle 动画循环播放无闪烁
+- [ ] walk 动画与移动速度匹配（脚不打滑）
+- [ ] jump 起跳-空中-落地三阶段正确
+- [ ] attack1/2/3 连击时帧切换时机合理
+- [ ] heavy 重击有明显蓄力和释放感
+- [ ] skill 必杀技够炫酷（可以叠加特效图）
+- [ ] hurt 受击时有闪白/后退反馈
+- [ ] death 死亡后不再响应输入
+- [ ] 向左行走时角色镜像翻转正确
+- [ ] 素材缺失时自动 fallback 到程序绘制
+- [ ] 控制台无红色报错
+- [ ] 不同分辨率下素材不变形

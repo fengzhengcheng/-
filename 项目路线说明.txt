@@ -1,0 +1,93 @@
+========================================
+  项目路线说明
+  街头霸王 - 横版清版格斗闯关
+  最后更新: 2026-06-15
+========================================
+
+【当前主线】
+  网页 Canvas 版
+  项目路径: d:\Users\32568\Desktop\MTC\AI自由\beatemup-game\
+
+【备用工程】
+  Godot 版（已暂停开发）
+  项目路径: D:\GodotProjects\beatemup-godot\
+  状态: 不删除、不继续开发、仅作为备用参考
+
+【网页版目标】
+  做成类似《双截龙》《快打旋风》的街机横版清版格斗游戏
+  可直接部署到静态网站平台
+
+【当前已实现功能】
+  1. 开始菜单界面
+  2. 角色选择（3个角色 + 属性展示）
+  3. 三关关卡系统
+     - 第1关：城市街头
+     - 第2关：废弃仓库
+     - 第3关：码头夜战
+  4. 敌人波次系统
+  5. Boss 战（每关最终 Boss）
+  6. 武器系统（拾取、丢弃、耐久度）
+  7. 道具掉落（HP/EP/金币）
+  8. 暂停菜单
+  9. 关卡结算 / 胜利画面 / 失败画面
+  10. 视差背景渲染
+  11. 音效系统
+  12. 连击系统
+
+【后续开发计划】
+  1. 接入角色帧图（替换当前的程序化角色绘制）
+  2. 接入敌人帧图
+  3. 接入 Boss 帧图
+  4. 接入道具图
+  5. 接入武器图
+  6. 接入音效素材
+  7. 接入背景音乐
+  8. 优化背景图适配
+
+【技术栈】
+  纯前端: HTML5 Canvas + JavaScript + CSS
+  无需后端
+  无需构建工具
+  可直接部署到任意静态网站平台
+
+【文件结构】
+  index.html          - 游戏入口
+  style.css           - 游戏样式
+  main.js             - 游戏初始化
+  Game.js             - 游戏主模块
+  Camera.js           - 摄像机模块
+  LevelManager.js     - 关卡数据管理
+  Player.js           - 玩家控制
+  Enemy.js            - 敌人逻辑
+  Boss.js             - Boss 逻辑
+  BossManager.js      - Boss 管理
+  Weapon.js           - 武器系统
+  WeaponManager.js    - 武器管理
+  Input.js            - 输入处理
+  AudioManager.js     - 音频管理
+  BackgroundRenderer.js - 背景渲染
+  Effects.js          - 特效系统
+  CharacterConfig.js  - 角色配置
+  CharacterRenderer.js - 角色渲染
+  SpriteCharacterRenderer.js - 精灵角色渲染
+  AnimationStateMachine.js - 动画状态机
+  SpriteAnimation.js  - 精灵动画
+  GeneratedSpriteSheet.js - 程序化精灵图
+  Props.js            - 可破坏道具
+  Items.js            - 掉落物品
+  WaveManager.js      - 波次管理
+  SkillEffects.js     - 技能特效
+  UITheme.js          - UI 主题
+  Atmosphere.js       - 氛围粒子
+  Transition.js       - 场景过渡
+  assets/             - 素材目录（图片、音效等）
+  启动网页版游戏.bat  - 一键启动脚本
+  项目路线说明.txt    - 本文件
+  部署说明.txt        - 部署指南
+  开发汇报.txt        - 开发记录
+
+【注意事项】
+  1. 不要删除 Godot 项目
+  2. 不要再继续迁移 Godot 功能
+  3. 网页版是当前正式试玩 Demo
+  4. 使用 启动网页版游戏.bat 或直接双击 index.html 试玩

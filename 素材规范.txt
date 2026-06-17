@@ -1,0 +1,189 @@
+# 2D 横版清版格斗游戏 —— 素材规范文档
+
+## 一、角色素材规范
+
+### 1.1 主角建议尺寸
+- **单帧尺寸**：256×256 px（推荐）或 192×192 px（轻量）
+- **格式**：PNG，透明背景（RGBA）
+- **角色定位**：脚底居中于画布底部中心
+- **默认朝向**：面向右侧（+X 方向）
+- **镜像翻转**：向左移动时由代码水平翻转（scaleX = -1），不需要额外绘制左向帧
+
+### 1.2 角色动作清单（每个角色都需要）
+
+| 序号 | 动作名 | 帧数 | 说明 | 循环 |
+|------|--------|------|------|------|
+| 1 | idle | 4 帧 | 待机呼吸动画 | 是 |
+| 2 | walk | 6 帧 | 行走/跑动循环 | 是 |
+| 3 | jump | 3 帧 | 跳跃（起跳-空中-落地） | 否 |
+| 4 | attack1 | 4 帧 | 普攻第一段（轻拳/快刀） | 否 |
+| 5 | attack2 | 4 帧 | 普攻第二段（连击续招） | 否 |
+| 6 | attack3 | 4 帧 | 普攻第三段（终结技） | 否 |
+| 7 | heavy | 5 帧 | 重击（蓄力-释放-收招） | 否 |
+| 8 | skill | 6 帧 | 必杀技能（起手-释放-收招） | 否 |
+| 9 | hurt | 3 帧 | 受击硬直（闪白-后仰-恢复） | 否 |
+| 10 | death | 6 帧 | 死亡倒地（后仰-跪地-趴下-不动） | 否 |
+
+### 1.3 帧率建议
+- idle / walk：8~12 fps（流畅循环）
+- attack 系列：15~24 fps（打击感强）
+- heavy / skill：12~18 fps
+- hurt：20~30 fps（快速反馈）
+- death：8~12 fps（慢动作感）
+
+---
+
+## 二、文件命名规范
+
+### 2.1 角色动作帧命名格式
+```
+{角色英文名}_{动作名}_{帧序号}.png
+```
+
+#### 示例 — 阿龙 (along)
+```
+along_idle_01.png    along_idle_02.png    along_idle_03.png    along_idle_04.png
+along_walk_01.png   along_walk_02.png   ...                    along_walk_06.png
+along_jump_01.png   along_jump_02.png   along_jump_03.png
+along_attack1_01.png along_attack1_02.png along_attack1_03.png along_attack1_04.png
+along_attack2_01.png ...
+along_attack3_01.png ...
+along_heavy_01.png  ...                  along_heavy_05.png
+along_skill_01.png  ...                  along_skill_06.png
+along_hurt_01.png   along_hurt_02.png   along_hurt_03.png
+along_death_01.png  ...                  along_death_06.png
+```
+
+#### 示例 — 小影 (xiaoying)
+```
+xiaoying_idle_01.png  xiaoying_walk_01.png  xiaoying_attack1_01.png  ...
+```
+
+#### 示例 — 铁山 (tieshan)
+```
+tieshan_idle_01.png  tieshan_walk_01.png  tieshan_heavy_01.png  ...
+```
+
+### 2.2 敌人命名格式
+```
+enemy_{类型}_{动作名}_{帧序号}.png
+```
+示例：
+```
+enemy_thug_idle_01.png     enemy_thug_walk_01.png     enemy_thug_attack1_01.png
+enemy_fast_idle_01.png     enemy_tank_idle_01.png
+boss1_idle_01.png          boss1_attack1_01.png        boss1_skill_01.png
+```
+
+---
+
+## 三、武器素材规范
+
+### 3.1 尺寸与格式
+- **尺寸**：128×128 px（足够容纳各种武器）
+- **格式**：PNG，透明背景
+- **默认朝向**：朝右（+X 方向）
+- **锚点**：武器握把中心偏左（约 35% 处），方便代码对齐角色手部
+
+### 3.2 武器列表与命名
+| 武器名 | 文件名 | 描述 |
+|--------|--------|------|
+| 木棍 | weapon_stick.png | 基础近战武器 |
+| 钢管 | weapon_pipe.png | 中等伤害近战 |
+| 破瓶子 | weapon_bottle.png | 低伤害一次性 |
+| 铁锤 | weapon_hammer.png | 高伤害重型 |
+
+---
+
+## 四、道具素材规范
+
+### 4.1 尺寸与格式
+- **尺寸**：64×64 px
+- **格式**：PNG，透明背景
+- **风格**：像素风或卡通风格均可，保持统一
+
+### 4.2 道具列表与命名
+| 道具名 | 文件名 | 描述 |
+|--------|--------|------|
+| 血瓶 | item_hp.png | 回复生命值 |
+| 能量瓶 | item_energy.png | 回复能量/怒气 |
+| 金币 | item_coin.png | 分数道具 |
+| 钥匙 | item_key.png | 关卡钥匙（可选） |
+
+---
+
+## 五、技能特效素材规范
+
+### 5.1 尺寸与格式
+- **尺寸**：256×256 px（大范围特效）或 128×128 px（小型特效）
+- **格式**：PNG，透明背景
+- **特效风格**：与角色画风一致（卡通/像素/手绘）
+
+### 5.2 特效命名格式
+```
+effect_{角色名}_{特效名}_{帧序号}.png
+```
+示例：
+```
+effect_along_slash_01.png     effect_along_slash_02.png  ... （斩击刀光）
+effect_xiaoying_dash_01.png   effect_xiaoying_dash_02.png ...（冲刺残影）
+effect_tieshan_ground_01.png  effect_tieshan_ground_02.png ...（地震波）
+effect_enemy_hit_01.png       effect_enemy_hit_02.png      ...（受击闪光）
+effect_boss_fire_01.png       effect_boss_fire_02.png      ...（Boss火焰）
+```
+
+---
+
+## 六、背景素材规范
+
+### 6.1 尺寸与要求
+- **尺寸**：1920×1080 px（推荐）或 1280×720 px
+- **比例**：16:9
+- **格式**：JPG 或 PNG
+- **内容**：
+  - ✅ 纯背景场景（街道、仓库、码头等）
+  - ✅ 可有视差层（前景/中景/后景分层）
+  - ❌ 不要包含 UI 元素
+  - ❌ 不要包含按钮、标题、文字
+  - ❌ 不要包含角色立绘
+
+### 6.2 背景命名
+```
+bg_level1.png    bg_level2.png    bg_level3.png
+bg_boss1.png     bg_boss2.png     bg_boss3.png
+```
+
+---
+
+## 七、通用注意事项
+
+1. **透明度**：所有精灵图必须使用真正的透明通道（不是白色/绿色抠图）
+2. **一致性**：同一角色的所有动作帧必须保持相同的画幅和角色大小
+3. **优化**：尽量控制单张图片不超过 200KB（PNG 压缩）
+4. **备用方案**：如果某角色缺少某个动作帧，游戏应 fallback 到当前程序绘制的占位图形，不应崩溃
+5. **方向约定**：所有素材默认面向右，左向由代码 scaleX(-1) 处理
+
+---
+
+## 八、后续素材生成计划
+
+### 第 1 步
+生成阿龙三视图（正面/侧面/背面参考），确定主角外观设计。
+
+### 第 2 步
+生成小影三视图，确定速度型角色外观。
+
+### 第 3 步
+生成铁山三视图，确定力量型角色外观。
+
+### 第 4 步
+生成阿龙 idle / walk 动作帧（各 4~6 帧），先接入一个角色做测试验证。
+
+### 第 5 步
+生成阿龙 attack / heavy / skill / hurt / death 全套动作帧。
+
+### 第 6 步
+补全小影、铁山全套动作帧。
+
+### 第 7 步
+生成普通敌人、Boss、武器、道具、技能特效素材。

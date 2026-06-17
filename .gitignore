@@ -1,0 +1,14 @@
+# OS / editor
+Thumbs.db
+.DS_Store
+
+# Local temp outputs
+.tmp*
+step*.png
+
+# Raw source materials not needed for runtime
+图片/
+
+# Python cache
+__pycache__/
+*.pyc
