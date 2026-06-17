@@ -13,9 +13,9 @@ class Enemy {
         this.height = 68;
         this.type = type;
         const configs = {
-            normal: { speed: 1.3, hp: 40, damage: 8, attackRange: 45, attackCooldown: 90, verticalSpeed: 0.5 },
-            fast: { speed: 1.8, hp: 25, damage: 5, attackRange: 38, attackCooldown: 60, verticalSpeed: 0.7 },
-            tank: { speed: 0.8, hp: 80, damage: 15, attackRange: 50, attackCooldown: 120, verticalSpeed: 0.4 }
+            normal: { speed: 1.3, hp: 40, damage: 8, attackRange: 68, attackCooldown: 90, verticalSpeed: 0.75 },
+            fast: { speed: 1.8, hp: 25, damage: 5, attackRange: 62, attackCooldown: 60, verticalSpeed: 0.95 },
+            tank: { speed: 0.8, hp: 80, damage: 15, attackRange: 76, attackCooldown: 120, verticalSpeed: 0.65 }
         };
         const cfg = configs[type] || configs.normal;
         this.speed = cfg.speed;
@@ -41,7 +41,7 @@ class Enemy {
         this.hurtDuration = 15;
         this.knockbackX = 0;
         this.knockbackY = 0;
-        this.chaseRange = 500;
+        this.chaseRange = 760;
         this.animFrame = 0;
         this.animTimer = 0;
         this.alive = true;
@@ -51,6 +51,11 @@ class Enemy {
         this.yMin = 0;
         this.yMax = 600;
         this.idleTimer = 0;
+        this.surroundAngle = Math.random() * Math.PI * 2;
+        this.surroundRadius = this.attackRange * (0.62 + Math.random() * 0.34);
+        this.surroundJitterTimer = 30 + Math.floor(Math.random() * 90);
+        this.surroundSlotIndex = 0;
+        this.surroundSlotTotal = 1;
         // 跳跃高度（jumpHeight = 0 在地面，jumpHeight > 0 在空中）
         this.jumpHeight = 0;
         // 角色外观
@@ -60,6 +65,13 @@ class Enemy {
         this.animStateMachine = new AnimationStateMachine(this);
         this.animStateMachine.init(type);
         this.useSpriteRenderer = true;
+    }
+
+    setSurroundSlot(index, total) {
+        this.surroundSlotIndex = index;
+        this.surroundSlotTotal = Math.max(1, total || 1);
+        this.surroundAngle = (index / this.surroundSlotTotal) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+        this.surroundRadius = this.attackRange * (0.68 + Math.random() * 0.32);
     }
 
     update(player, walkArea) {
@@ -105,15 +117,21 @@ class Enemy {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distX = Math.abs(dx);
-        const distY = Math.abs(dy);
+        const distance = Math.hypot(dx, dy);
 
         if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
         if (this.attackCooldown > 0) this.attackCooldown--;
+        if (this.surroundJitterTimer > 0) this.surroundJitterTimer--;
+        else {
+            this.surroundAngle += (Math.random() - 0.5) * 0.8;
+            this.surroundRadius = this.attackRange * (0.62 + Math.random() * 0.45);
+            this.surroundJitterTimer = 45 + Math.floor(Math.random() * 100);
+        }
 
         if (this.state === 'idle') {
             this.idleTimer++;
             if (this.idleTimer > 30) { // 反应延迟
-                if (distX < 400) {
+                if (distance < this.chaseRange) {
                     this.state = 'chase';
                     this.idleTimer = 0;
                 }
@@ -123,16 +141,23 @@ class Enemy {
             return;
         }
 
-        if (distX < this.attackRange && distY < this.attackYRange && this.attackCooldown <= 0) {
+        if (distance <= this.attackRange && this.attackCooldown <= 0) {
             this.state = 'attack';
             this.attackTimer = this.attackDuration;
             this.attackHit = false;
             this.idleTimer = 0;
             this.attackCooldown = this.attackCooldownMax;
-        } else if (distX < this.chaseRange || this.state === 'chase') {
+        } else if (distance < this.chaseRange || this.state === 'chase') {
             this.state = 'chase';
-            if (distX > this.attackRange * 0.5) this.x += this.facing * this.speed;
-            if (distY > 20) this.y += (dy > 0 ? 1 : -1) * this.verticalSpeed * 0.5;
+            const desiredX = player.x + Math.cos(this.surroundAngle) * this.surroundRadius;
+            const desiredY = player.y + Math.sin(this.surroundAngle) * this.surroundRadius;
+            const moveX = desiredX - this.x;
+            const moveY = desiredY - this.y;
+            const moveDistance = Math.max(1, Math.hypot(moveX, moveY));
+            if (moveDistance > 6) {
+                this.x += (moveX / moveDistance) * this.speed;
+                this.y += (moveY / moveDistance) * this.verticalSpeed;
+            }
             // 统一使用 walkArea 限制
             if (walkArea) GameUtils.clampToWalkArea(this, walkArea);
             else this.clampY();

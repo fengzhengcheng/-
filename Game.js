@@ -456,16 +456,16 @@ class Game {
             if (!enemy.alive || enemy.state === 'dead') return;
             const dx = enemy.x - p.x;
             const absY = Math.abs(enemy.y - p.y);
+            const distance = Math.hypot(dx, absY);
             if (p.facing === 1 && dx < 0) return;
             if (p.facing === -1 && dx > 0) return;
-            if (Math.abs(dx) > (p.config.laserRange || 520)) return;
-            if (absY > (p.config.laserLockYRange || 110)) return;
+            if (distance > (p.config.laserRange || 520)) return;
             candidates.push({
                 entity: enemy,
                 id: `enemy-${enemy.type}-${Math.floor(enemy.x)}-${Math.floor(enemy.y)}`,
                 dx: Math.abs(dx),
                 dy: absY,
-                distance: Math.hypot(Math.abs(dx), absY),
+                distance,
                 isBoss: false
             });
         });
@@ -474,14 +474,15 @@ class Game {
         if (this.bossManager.bossActive && boss && boss.alive && boss.state !== 'dead') {
             const dx = boss.x - p.x;
             const absY = Math.abs(boss.y - p.y);
+            const distance = Math.hypot(dx, absY);
             if (!((p.facing === 1 && dx < 0) || (p.facing === -1 && dx > 0))) {
-                if (Math.abs(dx) <= (p.config.laserRange || 520) && absY <= (p.config.laserLockYRange || 110)) {
+                if (distance <= (p.config.laserRange || 520)) {
                     candidates.push({
                         entity: boss,
                         id: `boss-${boss.name}`,
                         dx: Math.abs(dx),
                         dy: absY,
-                        distance: Math.hypot(Math.abs(dx), absY),
+                        distance,
                         isBoss: true
                     });
                 }
@@ -774,7 +775,7 @@ class Game {
             this.enemies.forEach(e => {
                 if (e.state === 'dead' || !e.alive) return;
                 if (!e.isAttacking) return;
-                const dist = Math.abs(e.x - this.player.x);
+                const dist = Math.hypot(e.x - this.player.x, e.y - this.player.y);
                 if (dist < closestDist) { closestDist = dist; attacker = e; }
             });
             this.currentEnemyAttacker = attacker;
@@ -1152,20 +1153,20 @@ class Game {
         ctx.save();
         ctx.textAlign = 'center';
 
-        // 主标题："街头霸王"
+        // 主标题
         const titleGlow = Math.sin(t * 0.04) * 6 + 12; // blur 6~18
         ctx.shadowColor = '#ff4400';
         ctx.shadowBlur = titleGlow;
         ctx.fillStyle = '#ffdd00';
         ctx.font = 'bold 52px "Microsoft YaHei", sans-serif';
-        ctx.fillText('街头霸王', W / 2, 100);
+        ctx.fillText('赤锋行动', W / 2, 100);
 
-        // 副标题："横版清版格斗闯关"
+        // 副标题
         ctx.shadowColor = '#4488ff';
         ctx.shadowBlur = 4;
         ctx.fillStyle = '#aaccff';
         ctx.font = '20px "Microsoft YaHei", sans-serif';
-        ctx.fillText('横版清版格斗闯关', W / 2, 130);
+        ctx.fillText('距离判定清版格斗', W / 2, 130);
         ctx.restore();
 
         // === 阶段3：特色卡片 (y≈330~410) ===
@@ -1381,10 +1382,10 @@ class Game {
         ctx.textAlign = 'center';
         ctx.shadowColor = '#ff6600';
         ctx.shadowBlur = 16;
-        ctx.fillText('街头霸王', W / 2, H * 0.35);
+        ctx.fillText('赤锋行动', W / 2, H * 0.35);
         ctx.font = '20px "Microsoft YaHei", sans-serif';
         ctx.shadowBlur = 8;
-        ctx.fillText('横版清版格斗闯关', W / 2, H * 0.42);
+        ctx.fillText('距离判定清版格斗', W / 2, H * 0.42);
         ctx.restore();
 
         // 开始按钮
@@ -2218,11 +2219,12 @@ class Game {
         this.canvas.addEventListener('mousemove', (e) => { const pos = this.camera.screenToLogical(e.clientX, e.clientY); this.mouseX = pos.x; this.mouseY = pos.y; });
         window.addEventListener('blur', () => { if (this.state === 'playing') { this.state = 'paused'; this.audio.pauseBGM(); } });
         this.audio.init(); this.audio.startMenuBGM();
+        const charSpriteVersion = window.GAME_BUILD_VERSION || Date.now(); // 统一版本号，避免部署后旧资源闪现
         // 预加载背景图片
         BackgroundRenderer.preloadImages();
         // 预加载菜单封面图
         const coverImg = new Image();
-        coverImg.src = 'assets/ui/menu_cover.png';
+        coverImg.src = `assets/ui/menu_cover.png?v=${charSpriteVersion}`;
         coverImg.onload = () => {
             this.menuCoverImage = coverImg;
             this.menuCoverLoaded = true;
@@ -2233,7 +2235,7 @@ class Game {
         };
         // 预加载菜单背景图
         const bgImg = new Image();
-        bgImg.src = 'assets/ui/menu_bg.png';
+        bgImg.src = `assets/ui/menu_bg.png?v=${charSpriteVersion}`;
         bgImg.onload = () => {
             this.menuBgImage = bgImg;
             this.menuBgLoaded = true;
@@ -2243,7 +2245,6 @@ class Game {
             console.warn('[Menu] menu_bg.png not found');
         };
         // 预加载角色立绘图片（带版本号防缓存）
-        const charSpriteVersion = Date.now(); // 时间戳版本号
         this.charList.forEach(char => {
             if (char.spriteIdle) {
                 console.log(`[CharSprite] ${char.id} src = ${char.spriteIdle}?v=${charSpriteVersion}`);

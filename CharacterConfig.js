@@ -28,7 +28,7 @@ class CharacterConfig {
             skillCost: 0,
             skillType: 'laser_eye',
             skillName: '激光眼',
-            skillDesc: '长按L持续发射激光，自动锁定前方同轨目标',
+            skillDesc: '长按L持续发射激光，自动锁定距离内最近目标',
             knockback: [5, 6, 12],
             heavyKnockback: 10,
             skillKnockback: 14,

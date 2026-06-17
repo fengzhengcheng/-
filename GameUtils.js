@@ -16,33 +16,13 @@ class GameUtils {
         const attackBox = typeof attackBoxOrRangeX === 'object' && attackBoxOrRangeX
             ? attackBoxOrRangeX
             : null;
-        const targetHitBox = typeof target.getHitBox === 'function'
-            ? target.getHitBox()
-            : {
-                x: target.x - (target.width || 0) / 2,
-                y: target.y - (target.height || 0),
-                width: target.width || 0,
-                height: target.height || 0,
-                centerY: target.y,
-                yRange: Math.max(18, Math.floor((target.height || 40) * 0.25))
-            };
+        const attackerPoint = this.getEntityFootPoint(attacker);
+        const targetPoint = this.getEntityFootPoint(target);
+        const distance = Math.hypot(targetPoint.x - attackerPoint.x, targetPoint.y - attackerPoint.y);
+        const attackRange = this.getAttackDistance(attacker, attackBoxOrRangeX, attackRangeY);
+        const targetRadius = Math.max(8, Math.min(28, (target.width || 32) * 0.35));
 
-        if (attackBox) {
-            const targetCenterX = targetHitBox.x + targetHitBox.width / 2;
-            if (targetCenterX < attackBox.x || targetCenterX > attackBox.x + attackBox.width) {
-                return false;
-            }
-            if (!this.sameLane(attackBox, targetHitBox)) return false;
-        } else {
-            const dx = Math.abs(attacker.x - target.x);
-            if (dx > attackBoxOrRangeX) return false;
-            if (!this.sameLane(
-                { centerY: attacker.y, yRange: attackRangeY },
-                targetHitBox
-            )) {
-                return false;
-            }
-        }
+        if (distance > attackRange + targetRadius) return false;
 
         // 地面攻击判定：目标 jumpHeight > 15（空中）时不能命中
         if (isGroundAttack && target.jumpHeight > 15) return false;
@@ -51,6 +31,22 @@ class GameUtils {
         if (isGroundAttack && attacker.jumpHeight > 15 && target.jumpHeight <= 15) return false;
 
         return true;
+    }
+
+    static getEntityFootPoint(entity) {
+        return {
+            x: Number.isFinite(entity?.x) ? entity.x : 0,
+            y: Number.isFinite(entity?.y) ? entity.y : 0
+        };
+    }
+
+    static getAttackDistance(attacker, attackBoxOrRangeX, attackRangeY) {
+        if (typeof attackBoxOrRangeX === 'object' && attackBoxOrRangeX) {
+            const widthRange = attackBoxOrRangeX.range ?? attackBoxOrRangeX.width ?? 0;
+            const depthRange = attackBoxOrRangeX.yRange ?? attackRangeY ?? 0;
+            return Math.max(widthRange, depthRange, 1);
+        }
+        return Math.max(Number(attackBoxOrRangeX) || 0, Number(attackRangeY) || 0, attacker?.attackRange || 0, 1);
     }
 
     /**

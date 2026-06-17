@@ -167,20 +167,21 @@ class Boss {
         const dy = player.y - this.y;
         const distX = Math.abs(dx);
         const distY = Math.abs(dy);
+        const distance = Math.hypot(dx, dy);
 
         if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
         if (this.attackCooldown > 0) this.attackCooldown--;
 
         if (this.attackCooldown <= 0) {
-            if (this.phase >= 3 && distX > 150 && distX < 350 && Math.random() < 0.25) {
+            if (this.phase >= 3 && distance > 150 && distance < 350 && Math.random() < 0.25) {
                 this.startCharge(dx);
-            } else if (this.phase >= 3 && distX < this.slamRange && distY < 40 && Math.random() < 0.2) {
+            } else if (this.phase >= 3 && distance < this.slamRange && Math.random() < 0.2) {
                 this.startSlam();
-            } else if (this.phase >= 2 && distX < this.heavyRange && distY < this.attackYRange && Math.random() < 0.3) {
+            } else if (this.phase >= 2 && distance < this.heavyRange && Math.random() < 0.3) {
                 this.startHeavyAttack();
-            } else if (distX < this.punchRange && distY < this.attackYRange) {
+            } else if (distance < this.punchRange) {
                 this.startPunch();
-            } else if (distX < 400) {
+            } else if (distance < 400) {
                 this.state = 'chase';
                 if (distX > this.punchRange * 0.5) this.x += this.facing * this.speed;
                 if (distY > 5) this.y += (dy > 0 ? 1 : -1) * this.verticalSpeed;

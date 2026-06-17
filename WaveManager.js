@@ -17,23 +17,32 @@ class WaveManager {
         this.allCleared = false;
         this.waveAnnounceTimer = 0;
 
-        if (level === 1) {
-            this.waves = [
-                [{ type: 'normal', offset: 0 }, { type: 'normal', offset: 50 }, { type: 'normal', offset: 100 }],
-                [{ type: 'fast', offset: 0 }, { type: 'fast', offset: 50 }, { type: 'normal', offset: 100 }],
-                [{ type: 'tank', offset: 0 }, { type: 'normal', offset: 50 }, { type: 'normal', offset: 100 }]
-            ];
-        } else if (level === 2) {
-            this.waves = [
-                [{ type: 'fast', offset: 0 }, { type: 'fast', offset: 50 }, { type: 'normal', offset: 100 }],
-                [{ type: 'normal', offset: 0 }, { type: 'normal', offset: 50 }, { type: 'tank', offset: 100 }, { type: 'fast', offset: 150 }],
-                [{ type: 'tank', offset: 0 }, { type: 'tank', offset: 60 }, { type: 'fast', offset: 120 }]
-            ];
-        } else {
-            this.waves = [
-                [{ type: 'normal', offset: 0 }, { type: 'normal', offset: 50 }, { type: 'normal', offset: 100 }]
-            ];
+        this.waves = this.createFiveDoublingWaves(level);
+    }
+
+    createFiveDoublingWaves(level) {
+        const baseCount = Math.max(2, Math.min(4, level + 1));
+        const waves = [];
+        for (let waveIndex = 0; waveIndex < 5; waveIndex++) {
+            const count = baseCount * Math.pow(2, waveIndex);
+            const wave = [];
+            for (let i = 0; i < count; i++) {
+                wave.push({
+                    type: this.pickEnemyType(level, waveIndex, i),
+                    offset: i * 18,
+                    side: i % 4
+                });
+            }
+            waves.push(wave);
         }
+        return waves;
+    }
+
+    pickEnemyType(level, waveIndex, index) {
+        if (level >= 3 && waveIndex >= 2 && index % 5 === 0) return 'tank';
+        if (level >= 2 && waveIndex >= 1 && index % 4 === 0) return 'tank';
+        if (waveIndex >= 1 && index % 3 === 0) return 'fast';
+        return 'normal';
     }
 
     getCurrentWave() {
@@ -50,27 +59,28 @@ class WaveManager {
         if (!wave) return [];
 
         const enemies = [];
-        // 在玩家前方生成，但确保在地图范围内
-        let spawnBaseX = playerX + logicalWidth * 0.4;
-
-        // 确保不会超出地图右边界
-        if (spawnBaseX > mapWidth - 100) {
-            spawnBaseX = mapWidth - 100;
-        }
-        // 如果玩家在地图右端，从左前方生成
-        if (playerX > mapWidth - logicalWidth) {
-            spawnBaseX = playerX + 150;
-            if (spawnBaseX > mapWidth - 50) {
-                spawnBaseX = playerX - 300;
-            }
-        }
+        const minX = 50;
+        const maxX = mapWidth - 50;
+        const viewLeft = Math.max(minX, cameraX + 40);
+        const viewRight = Math.min(maxX, cameraX + logicalWidth - 40);
+        const spreadRadiusX = Math.min(360, logicalWidth * 0.42);
+        const spreadRadiusY = Math.max(70, (yMax - yMin) * 0.45);
 
         wave.forEach((cfg, i) => {
-            const x = spawnBaseX + cfg.offset + i * 40;
-            // 确保在地图范围内
-            const clampedX = Math.max(50, Math.min(x, mapWidth - 50));
-            const y = yMin + 20 + Math.random() * (yMax - yMin - 40);
-            enemies.push(new Enemy(clampedX, y, cfg.type));
+            const angle = ((cfg.side ?? i) % 4) * Math.PI / 2 + (Math.random() - 0.5) * 0.65;
+            const distanceX = spreadRadiusX + Math.random() * 140;
+            const distanceY = spreadRadiusY + Math.random() * 80;
+            let x = playerX + Math.cos(angle) * distanceX + (Math.random() - 0.5) * 80;
+            let y = groundY + Math.sin(angle) * distanceY + (Math.random() - 0.5) * 50;
+
+            if (i % 4 === 0) x = Math.min(viewRight, playerX + distanceX);
+            else if (i % 4 === 2) x = Math.max(viewLeft, playerX - distanceX);
+
+            const clampedX = Math.max(minX, Math.min(x, maxX));
+            const clampedY = Math.max(yMin + 20, Math.min(y, yMax - 20));
+            const enemy = new Enemy(clampedX, clampedY, cfg.type);
+            if (typeof enemy.setSurroundSlot === 'function') enemy.setSurroundSlot(i, wave.length);
+            enemies.push(enemy);
         });
 
         this.waveAnnounceText = `第 ${this.getCurrentWaveNumber()} 波`;
